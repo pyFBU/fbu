@@ -1,6 +1,7 @@
 import pymc3 as mc
 from numpy import random, dot, array, inf
 import theano
+import copy
 
 class PyFBU(object):
     """A class to perform a MCMC sampling.
@@ -14,7 +15,7 @@ class PyFBU(object):
     def __init__(self,data=[],response=[],background={},
                  backgroundsyst={},objsyst={'signal':{},'background':{}},
                  lower=[],upper=[],regularization=None,
-                 rndseed=-1,verbose=False,name='',monitoring=False):
+                 rndseed=-1,verbose=False,name='',monitoring=False, mode=False):
         #                                     [MCMC parameters]
         self.nTune = 1000
         self.nMCMC = 10000 # N of sampling points
@@ -37,7 +38,7 @@ class PyFBU(object):
         self.verbose   = verbose
         self.name      = name
         self.monitoring = monitoring
-        
+        self.mode = mode
     #__________________________________________________________
     def validateinput(self):
         def checklen(list1,list2):
@@ -63,6 +64,7 @@ class PyFBU(object):
         nbckg = len(backgroundkeys)
 
         backgrounds = []
+        backgroundnormsysts = array([])
         if nbckg>0:
             backgrounds = array([self.background[key] for key in backgroundkeys])
             backgroundnormsysts = array([self.backgroundsyst[key] for key in backgroundkeys])
@@ -146,16 +148,20 @@ class PyFBU(object):
             trace = mc.sample(self.nMCMC,tune=self.nTune,target_accept=self.target_accept)
         
             self.trace = [trace['truth%d'%bin][:] for bin in range(truthdim)]
+            #self.trace = [copy.deepcopy(trace['truth%d'%bin][:]) for bin in range(truthdim)]
             self.nuisancestrace = {}
             if nbckg>0:
                 for name,err in zip(backgroundkeys,backgroundnormsysts):
                     if err<0.:
                         self.nuisancestrace[name] = trace['norm_%s'%name][:]
+                        #self.nuisancestrace[name] = copy.deepcopy(trace['norm_%s'%name][:])
                     if err>0.:
                         self.nuisancestrace[name] = trace['gaus_%s'%name][:]
+                        #self.nuisancestrace[name] = copy.deepcopy(trace['gaus_%s'%name][:])
             for name in objsystkeys:
                 if self.systfixsigma==0.:
                     self.nuisancestrace[name] = trace['gaus_%s'%name][:]
+                    #self.nuisancestrace[name] = copy.deepcopy(trace['gaus_%s'%name][:])
 
         if self.monitoring:
             from fbu import monitoring
