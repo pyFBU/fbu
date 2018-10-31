@@ -34,6 +34,7 @@ PyMC 3 can be installed using conda
 The following packages also need to be installed
 
 ::
+
     conda install mkl
     conda install numpy
     conda install mkl-service
@@ -41,6 +42,7 @@ The following packages also need to be installed
 And this export needs to be added to your bashrc or similar to avoid warings
 
 ::
+
     export MKL_THREADING_LAYER=GNU
 
 or pip
