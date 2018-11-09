@@ -1,5 +1,5 @@
-.. image:: https://travis-ci.org/pyFBU/fbu.png
-   :target: https://travis-ci.org/pyFBU/fbu
+.. image:: https://travis-ci.com/pyFBU/fbu.png
+   :target: https://travis-ci.com/pyFBU/fbu
 
 =====
 PyFBU
