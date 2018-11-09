@@ -88,7 +88,7 @@ class PyFBU(object):
                                             for bckg in backgroundkeys])
 
         recodim  = len(data)
-        resmat = self.response
+        resmat   = self.response
         truthdim = len(resmat)
 
         model = mc.Model()
