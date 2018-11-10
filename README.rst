@@ -31,6 +31,20 @@ PyMC 3 can be installed using conda
 
    conda install -c conda-forge pymc3
 
+The following packages also need to be installed
+
+::
+
+    conda install mkl
+    conda install numpy
+    conda install mkl-service
+
+And this export needs to be added to your bashrc or similar to avoid warings
+
+::
+
+    export MKL_THREADING_LAYER=GNU
+
 or pip
 
 ::
@@ -56,4 +70,6 @@ Usage
 -----
 
 A `simple tutorial <tutorial.ipynb>`_ to help you get started.
+
+
 
