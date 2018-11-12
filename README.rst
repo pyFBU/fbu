@@ -59,11 +59,11 @@ The latest stable version of PyFBU can be installed using pip.
     pip install fbu
 
 Alternatively one can check out the development version of the code from the 
-`GitHub <https://github.com/gerbaudo/fbu>`_ repository:
+`GitHub <https://github.com/pyFBU/fbu>`_ repository:
 
 ::
 
-	git clone https://github.com/gerbaudo/fbu.git
+	git clone https://github.com/pyFBU/fbu.git
 
 
 Usage
