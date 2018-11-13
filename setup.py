@@ -3,10 +3,10 @@ from setuptools import setup
 DISTNAME = 'fbu'
 DESCRIPTION = "PyFBU"
 #VERSION = '0.0.2'
-VERSION = '0.1.1'
+VERSION = '0.1.2'
 AUTHOR = 'Davide Gerbaudo, Clement Helsens and Francesco Rubbo'
-AUTHOR_EMAIL = 'rubbo.francesco@gmail.com'
-URL = 'https://github.com/gerbaudo/fbu'
+AUTHOR_EMAIL = 'clement.helsens@gmail.com'
+URL = 'https://github.com/pyFBU/fbu'
 
 classifiers = [
     'Development Status :: 3 - Alpha',
