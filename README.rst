@@ -1,6 +1,9 @@
 .. image:: https://travis-ci.com/pyFBU/fbu.png
    :target: https://travis-ci.com/pyFBU/fbu
 
+.. image:: https://img.shields.io/pypi/v/fbu.svg
+   :target: https://pypi.python.org/pypi/fbu
+
 =====
 PyFBU
 =====
