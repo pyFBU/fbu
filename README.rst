@@ -34,6 +34,12 @@ PyMC 3 can be installed using conda
 
    conda install -c conda-forge pymc3
 
+or pip
+
+::
+
+    pip install git+https://github.com/pymc-devs/pymc3
+
 The following packages also need to be installed
 
 ::
@@ -47,13 +53,7 @@ And this export needs to be added to your bashrc or similar to avoid warings
 ::
 
     export MKL_THREADING_LAYER=GNU
-
-or pip
-
-::
-
-    pip install git+https://github.com/pymc-devs/pymc3
-
+    
 
 The latest stable version of PyFBU can be installed using pip.
 
