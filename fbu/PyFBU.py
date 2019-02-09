@@ -28,6 +28,7 @@ class PyFBU(object):
         #                                     [unfolding model parameters]
         self.prior = 'Uniform'
         self.priorparams = {}
+        self.obj_syst_flatprior = {'key': '__flat__', 'lower':-5, 'upper':5}
         self.regularization = regularization
         #                                     [input]
         self.data        = data           # data list
@@ -114,9 +115,11 @@ class PyFBU(object):
                 bckgnuisances = mc.math.stack(bckgnuisances)
 
             if nobjsyst>0:
-                objnuisances = [ mc.Normal('gaus_%s'%name,mu=0.,tau=1.0#,
-                                           #observed=(True if self.systfixsigma!=0 else False)
-                                           )
+                objnuisances = [ mc.Uniform('flat_%s'%name,
+                                            lower=self.obj_syst_flatprior['lower'],
+                                            upper=self.obj_syst_flatprior['upper'])
+                                 if self.obj_syst_flatprior['key'] in name else
+                                 mc.Normal('gaus_%s'%name,mu=0.,tau=1.0)
                                  for name in objsystkeys]
                 objnuisances = mc.math.stack(objnuisances)
 
@@ -158,7 +161,7 @@ class PyFBU(object):
 
             print(self.nuts_kwargs)
 
-            
+
             if self.mode:
                 map_estimate = mc.find_MAP(model=model, method=self.MAP_method)
                 print (map_estimate)
@@ -190,7 +193,10 @@ class PyFBU(object):
                         #self.nuisancestrace[name] = copy.deepcopy(trace['gaus_%s'%name][:])
             for name in objsystkeys:
                 if self.systfixsigma==0.:
-                    self.nuisancestrace[name] = trace['gaus_%s'%name][:]
+                    if self.obj_syst_flatprior['key'] in name:
+                        self.nuisancestrace[name] = trace['flat_%s'%name][:]
+                    else:
+                        self.nuisancestrace[name] = trace['gaus_%s'%name][:]
                     #self.nuisancestrace[name] = copy.deepcopy(trace['gaus_%s'%name][:])
 
         if self.monitoring:
