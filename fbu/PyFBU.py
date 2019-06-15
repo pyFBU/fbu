@@ -29,6 +29,7 @@ class PyFBU(object):
         self.prior = 'Uniform'
         self.priorparams = {}
         self.obj_syst_flatprior = {'key': '__flat__', 'lower':-5, 'upper':5}
+        self.freeze_NPs = {} # nuisance parameters for which to fix value (not sampled)
         self.regularization = regularization
         #                                     [input]
         self.data        = data           # data list
@@ -94,6 +95,11 @@ class PyFBU(object):
 
         model = mc.Model()
         from .priors import wrapper
+        add_kwargs = dict()
+        if len(self.freeze_NPs) > 0:
+            print('Freezing values of following NPs:')
+            for key, val in self.freeze_NPs.items():
+                print('{0}: {1}'.format(key, val))
         with model:
             truth = wrapper(priorname=self.prior,
                             low=self.lower,up=self.upper,
@@ -102,25 +108,44 @@ class PyFBU(object):
             if nbckg>0:
                 bckgnuisances = []
                 for name,err in zip(backgroundkeys,backgroundnormsysts):
+                    try:
+                        add_kwargs['observed'] = self.freeze_NPs[name]
+                    except KeyError:
+                        add_kwargs = dict()
                     if err<0.:
                         bckgnuisances.append(
-                            mc.Uniform('norm_%s'%name,lower=0.,upper=3.)
+                            mc.Uniform('norm_%s'%name,lower=0.,upper=3., **add_kwargs)
                             )
                     else:
-                        BoundedNormal = mc.Bound(mc.Normal, lower=(-1.0/err if err>0.0 else -inf))
-                        bckgnuisances.append(
-                            BoundedNormal('gaus_%s'%name,
-                                          mu=0.,tau=1.0)
+                        # for fixed NP, one cannot use observed in bounded
+                        # distribution, so we have to use unbounded one
+                        if 'observed' in add_kwargs:
+                            bckgnuisances.append(
+                                mc.Normal('gaus_%s'%name, mu=0.,tau=1.0,
+                                          **add_kwargs)
+                            )
+                        else:
+                            BoundedNormal = mc.Bound(mc.Normal, lower=(-1.0/err if err>0.0 else -inf))
+                            bckgnuisances.append(
+                                BoundedNormal('gaus_%s'%name, mu=0.,tau=1.0)
                             )
                 bckgnuisances = mc.math.stack(bckgnuisances)
 
             if nobjsyst>0:
-                objnuisances = [ mc.Uniform('flat_%s'%name,
+                objnuisances = list()
+                for name in objsystkeys:
+                    try:
+                        add_kwargs['observed'] = self.freeze_NPs[name]
+                    except KeyError:
+                        add_kwargs = dict()
+                    if self.obj_syst_flatprior['key'] in name:
+                        objnuisances.append(mc.Uniform('flat_%s'%name,
                                             lower=self.obj_syst_flatprior['lower'],
-                                            upper=self.obj_syst_flatprior['upper'])
-                                 if self.obj_syst_flatprior['key'] in name else
-                                 mc.Normal('gaus_%s'%name,mu=0.,tau=1.0)
-                                 for name in objsystkeys]
+                                            upper=self.obj_syst_flatprior['upper'],
+                                            **add_kwargs))
+                    else:
+                        objnuisances.append(mc.Normal('gaus_%s'%name,mu=0.,
+                                                      tau=1.0, **add_kwargs))
                 objnuisances = mc.math.stack(objnuisances)
 
         # define potential to constrain truth spectrum
@@ -185,19 +210,31 @@ class PyFBU(object):
             self.nuisancestrace = {}
             if nbckg>0:
                 for name,err in zip(backgroundkeys,backgroundnormsysts):
-                    if err<0.:
-                        self.nuisancestrace[name] = trace['norm_%s'%name][:]
-                        #self.nuisancestrace[name] = copy.deepcopy(trace['norm_%s'%name][:])
-                    if err>0.:
-                        self.nuisancestrace[name] = trace['gaus_%s'%name][:]
-                        #self.nuisancestrace[name] = copy.deepcopy(trace['gaus_%s'%name][:])
+                    try:
+                        if err<0.:
+                            self.nuisancestrace[name] = trace['norm_%s'%name][:]
+                            #self.nuisancestrace[name] = copy.deepcopy(trace['norm_%s'%name][:])
+                        if err>0.:
+                            self.nuisancestrace[name] = trace['gaus_%s'%name][:]
+                            #self.nuisancestrace[name] = copy.deepcopy(trace['gaus_%s'%name][:])
+                    except KeyError as e:
+                        try:
+                            tmp = self.freeze_NPs[name]
+                        except KeyError as e:
+                            print('Warning: Missing NP trace', e)
             for name in objsystkeys:
                 if self.systfixsigma==0.:
-                    if self.obj_syst_flatprior['key'] in name:
-                        self.nuisancestrace[name] = trace['flat_%s'%name][:]
-                    else:
-                        self.nuisancestrace[name] = trace['gaus_%s'%name][:]
-                    #self.nuisancestrace[name] = copy.deepcopy(trace['gaus_%s'%name][:])
+                    try:
+                        if self.obj_syst_flatprior['key'] in name:
+                            self.nuisancestrace[name] = trace['flat_%s'%name][:]
+                        else:
+                            self.nuisancestrace[name] = trace['gaus_%s'%name][:]
+                        #self.nuisancestrace[name] = copy.deepcopy(trace['gaus_%s'%name][:])
+                    except KeyError as e:
+                        try:
+                            tmp = self.freeze_NPs[name]
+                        except KeyError as e:
+                            print('Warning: Missing NP trace', e)
 
         if self.monitoring:
             from fbu import monitoring
