@@ -36,8 +36,10 @@ class PyFBU(object):
         self.response    = response       # response matrix
         self.background  = background     # background dict
         self.backgroundsyst = backgroundsyst
+        self.backgrounderr = {}
         self.objsyst        = objsyst
         self.systfixsigma = 0.
+        self.smear_bckgs = {} # backgrounds to be smeared in PE (according to MC stats)
         #                                     [settings]
         self.rndseed   = rndseed
         self.verbose   = verbose
@@ -59,14 +61,30 @@ class PyFBU(object):
         for bin in [self.lower,self.upper]:
             checklen(bin,responsetruthbins)
     #__________________________________________________________
-    def fluctuate(self, data):
+    def fluctuate(self, data, err=None):
         random.seed(self.rndseed)
-        return random.poisson(data)
+        if err is None:
+            return random.poisson(data)
+        else:
+            return random.normal(data, err)
     #__________________________________________________________
     def run(self):
         self.validateinput()
-        data = self.data
-        data = self.fluctuate(data) if self.rndseed>=0 else data
+        data = copy.deepcopy(self.data)
+        background = copy.deepcopy(self.background)
+        if len(self.smear_bckgs) > 0:
+            if self.rndseed >= 0:
+                for bckg in self.smear_bckgs:
+                    try:
+                        background[bckg] = self.fluctuate(background[bckg],
+                                                          self.backgrounderr[bckg])
+                    except KeyError as e:
+                        print('Error when trying to smear background {0}')
+                        print('Check that the background exists in background'
+                              ' and backgrounderr dictionaries.')
+                        raise
+        else:
+            data = self.fluctuate(data) if self.rndseed>=0 else data
 
         # unpack background dictionaries
         backgroundkeys = self.backgroundsyst.keys()
@@ -75,7 +93,7 @@ class PyFBU(object):
         backgrounds = []
         backgroundnormsysts = array([])
         if nbckg>0:
-            backgrounds = array([self.background[key] for key in backgroundkeys])
+            backgrounds = array([background[key] for key in backgroundkeys])
             backgroundnormsysts = array([self.backgroundsyst[key] for key in backgroundkeys])
 
         # unpack object systematics dictionary
