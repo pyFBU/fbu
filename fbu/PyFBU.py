@@ -186,17 +186,14 @@ class PyFBU(object):
 
             if self.include_gammas and nbckg > 0:
                 gammas = [mc.Uniform('flat_gamma_{0}'.format(i), lower=0.,
-                                     upper=10.) for i in range(self.nbins)]
+                                     upper=2.) for i in range(self.nbins)]
                 gammas = mc.math.stack(gammas)
 
                 # construct the Poisson constraint on gammas
                 tau = (totalbckg/totalbckg_err)**2
-                m = reciprocal(tau)
-                print(sqrt(m))
-                print(reciprocal(sqrt(totalbckg)))
                 gamma_poissons = [
                     mc.Poisson('poisson_gamma_{0}'.format(i),
-                               mu=tau[i], observed=m[i]) for i in range(self.nbins)]
+                               mu=gammas[i]*tau[i], observed=tau[i]) for i in range(self.nbins)]
 
         # define potential to constrain truth spectrum
             if self.regularization:
