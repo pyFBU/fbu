@@ -1,5 +1,5 @@
 import pymc3 as mc
-from numpy import random, dot, array, inf
+from numpy import random, dot, array, inf, sum, sqrt, reciprocal
 import theano
 import copy
 
@@ -38,6 +38,9 @@ class PyFBU(object):
         self.backgroundsyst = backgroundsyst
         self.backgrounderr = {}
         self.objsyst        = objsyst
+        self.include_gammas = False
+        self.gammas_treshold = 0.005
+        self.nbins = 0
         self.systfixsigma = 0.
         self.smear_bckgs = {} # backgrounds to be smeared in PE (according to MC stats)
         #                                     [settings]
@@ -60,6 +63,10 @@ class PyFBU(object):
             checklen(self.data,bin)
         for bin in [self.lower,self.upper]:
             checklen(bin,responsetruthbins)
+
+        if self.include_gammas:
+            assert self.backgrounderr != {},\
+            'To include gammas, must provide background MC stat uncertainties'
     #__________________________________________________________
     def fluctuate(self, data, err=None):
         random.seed(self.rndseed)
@@ -89,12 +96,23 @@ class PyFBU(object):
         # unpack background dictionaries
         backgroundkeys = self.backgroundsyst.keys()
         nbckg = len(backgroundkeys)
+        self.nbins = len(background[next(iter(background))])
 
         backgrounds = []
+        backgrounds_err = []
         backgroundnormsysts = array([])
         if nbckg>0:
             backgrounds = array([background[key] for key in backgroundkeys])
+            # backgrounds_err_sq = array([self.backgrounderr[key]**2 for key in backgroundkeys])
+            backgrounds_err_sq = array([self.backgrounderr[key] for key in backgroundkeys])
+            backgrounds_err_sq = backgrounds_err_sq**2
             backgroundnormsysts = array([self.backgroundsyst[key] for key in backgroundkeys])
+
+        # need summed total background and it's error for gamma NPs
+        # to take into account MC stat uncertainty of backgrounds
+        if self.include_gammas:
+            totalbckg = sum(backgrounds, axis=0)
+            totalbckg_err = sqrt(sum(backgrounds_err_sq, axis=0))
 
         # unpack object systematics dictionary
         objsystkeys = self.objsyst['signal'].keys()
@@ -166,6 +184,20 @@ class PyFBU(object):
                                                       tau=1.0, **add_kwargs))
                 objnuisances = mc.math.stack(objnuisances)
 
+            if self.include_gammas and nbckg > 0:
+                gammas = [mc.Uniform('flat_gamma_{0}'.format(i), lower=0.,
+                                     upper=10.) for i in range(self.nbins)]
+                gammas = mc.math.stack(gammas)
+
+                # construct the Poisson constraint on gammas
+                tau = (totalbckg/totalbckg_err)**2
+                m = reciprocal(tau)
+                print(sqrt(m))
+                print(reciprocal(sqrt(totalbckg)))
+                gamma_poissons = [
+                    mc.Poisson('poisson_gamma_{0}'.format(i),
+                               mu=tau[i], observed=m[i]) for i in range(self.nbins)]
+
         # define potential to constrain truth spectrum
             if self.regularization:
                 truthpot = self.regularization.getpotential(truth)
@@ -184,6 +216,9 @@ class PyFBU(object):
                         smearedbackgrounds = backgrounds*smearbckg
 
                     bckg = theano.dot(1. + bckgnuisances*bckgnormerr,smearedbackgrounds)
+
+                    if self.include_gammas:
+                        bckg = bckg * gammas
 
                 tresmat = array(resmat)
                 reco = theano.dot(truth, tresmat)
@@ -240,6 +275,10 @@ class PyFBU(object):
                             tmp = self.freeze_NPs[name]
                         except KeyError as e:
                             print('Warning: Missing NP trace', e)
+                if self.include_gammas:
+                    for bin in range(self.nbins):
+                        self.nuisancestrace['gamma_{0}'.format(bin)]\
+                            = trace['flat_gamma_{0}'.format(bin)][:]
             for name in objsystkeys:
                 if self.systfixsigma==0.:
                     try:
