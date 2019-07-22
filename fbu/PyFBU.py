@@ -22,6 +22,7 @@ class PyFBU(object):
         self.nCores = 1 # number of CPU threads to utilize
         self.nChains = 2 # number of Markov chains to sample
         self.nuts_kwargs = None
+        self.init_method = 'jitter+adapt_diag'
         self.discard_tuned_samples = True # whether to discard tuning steps from posterior
         self.lower = lower  # lower sampling bounds
         self.upper = upper  # upper sampling bounds
@@ -156,9 +157,6 @@ class PyFBU(object):
             from datetime import timedelta
             init_time = time.time()
 
-            print(self.nuts_kwargs)
-
-            
             if self.mode:
                 map_estimate = mc.find_MAP(model=model, method=self.MAP_method)
                 print (map_estimate)
@@ -169,6 +167,7 @@ class PyFBU(object):
 
             trace = mc.sample(self.nMCMC,tune=self.nTune,cores=self.nCores,
                               chains=self.nChains, nuts_kwargs=self.nuts_kwargs,
+                              init=self.init_method, n_init=200000,
                               discard_tuned_samples=self.discard_tuned_samples,
                               progressbar=self.sampling_progressbar)
             finish_time = time.time()
