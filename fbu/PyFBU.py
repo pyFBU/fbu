@@ -158,7 +158,8 @@ class PyFBU(object):
             init_time = time.time()
 
             if self.mode:
-                map_estimate = mc.find_MAP(model=model, method=self.MAP_method)
+                map_estimate = mc.find_MAP(model=model, method=self.MAP_method,
+                                           options={'disp':self.verbose})
                 print (map_estimate)
                 self.MAP = map_estimate
                 self.trace = []
