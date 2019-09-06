@@ -69,6 +69,13 @@ class PyFBU(object):
             assert self.backgrounderr != {},\
             'To include gammas, must provide background MC stat uncertainties'
     #__________________________________________________________
+    def check_NPfrozen(self, NPname):
+        try:
+            tmp = self.freeze_NPs[NPname]
+            return True
+        except KeyError:
+            return False
+    #__________________________________________________________
     def fluctuate(self, data, err=None):
         random.seed(self.rndseed)
         if err is None:
@@ -193,14 +200,20 @@ class PyFBU(object):
                 gamma_poissons = []
                 tau = (totalbckg/totalbckg_err)**2
                 for i,bin in enumerate(self.include_gammas):
+                    NPname = 'gamma_{0}'.format(i)
                     if bin:
-                        gammas.append(mc.Uniform('flat_gamma_{0}'.format(i),
+                        try:
+                            add_kwargs['observed'] = self.freeze_NPs[NPname]
+                        except KeyError:
+                            add_kwargs = dict()
+                        gammas.append(mc.Uniform('flat_' + NPname,
                                                  lower=self.gammas_lower,
-                                                 upper=self.gammas_upper))
+                                                 upper=self.gammas_upper,
+                                                 **add_kwargs))
                         # construct the Poisson constraint on gammas
-                        gamma_poissons.append(mc.Poisson(
-                            'poisson_gamma_{0}'.format(i),
-                            mu=gammas[i]*tau[i], observed=tau[i]))
+                        gamma_poissons.append(mc.Poisson('poisson_' + NPname,
+                                                         mu=gammas[i]*tau[i],
+                                                         observed=tau[i]))
                     else:
                         gammas.append(1.)
                 gammas = mc.math.stack(gammas)
@@ -278,14 +291,14 @@ class PyFBU(object):
                             self.nuisancestrace[name] = trace['gaus_%s'%name][:]
                             #self.nuisancestrace[name] = copy.deepcopy(trace['gaus_%s'%name][:])
                     except KeyError as e:
-                        try:
-                            tmp = self.freeze_NPs[name]
-                        except KeyError as e:
-                            print('Warning: Missing NP trace', e)
+                        if not self.check_NPfrozen(name):
+                            print('Warning: Missing NP trace', name)
                 if self.include_gammas is not None:
                     for bin in range(self.nbins):
-                        self.nuisancestrace['gamma_{0}'.format(bin)]\
-                            = trace['flat_gamma_{0}'.format(bin)][:]
+                        NPname = 'gamma_{0}'.format(bin)
+                        if self.include_gammas[bin] and not self.check_NPfrozen(NPname):
+                            self.nuisancestrace[NPname]\
+                                = trace['flat_' + NPname][:]
             for name in objsystkeys:
                 if self.systfixsigma==0.:
                     try:
@@ -293,12 +306,9 @@ class PyFBU(object):
                             self.nuisancestrace[name] = trace['flat_%s'%name][:]
                         else:
                             self.nuisancestrace[name] = trace['gaus_%s'%name][:]
-                        #self.nuisancestrace[name] = copy.deepcopy(trace['gaus_%s'%name][:])
-                    except KeyError as e:
-                        try:
-                            tmp = self.freeze_NPs[name]
-                        except KeyError as e:
-                            print('Warning: Missing NP trace', e)
+                    except KeyError:
+                        if not self.check_NPfrozen(name):
+                            print('Warning: Missing NP trace', name)
 
         if self.monitoring:
             from fbu import monitoring
