@@ -178,7 +178,8 @@ class PyFBU(object):
             ))
 
             self.trace = [trace['truth%d'%bin][:] for bin in range(truthdim)]
-            #self.trace = [copy.deepcopy(trace['truth%d'%bin][:]) for bin in range(truthdim)]
+            self.__trace__ = trace # for full access
+            self.trace_summary = mc.summary(trace)
             self.nuisancestrace = {}
             if nbckg>0:
                 for name,err in zip(backgroundkeys,backgroundnormsysts):
