@@ -22,6 +22,7 @@ class PyFBU(object):
         self.nCores = 1 # number of CPU threads to utilize
         self.nChains = 2 # number of Markov chains to sample
         self.nuts_kwargs = None
+        self.init_method = 'jitter+adapt_diag'
         self.discard_tuned_samples = True # whether to discard tuning steps from posterior
         self.lower = lower  # lower sampling bounds
         self.upper = upper  # upper sampling bounds
@@ -156,11 +157,9 @@ class PyFBU(object):
             from datetime import timedelta
             init_time = time.time()
 
-            print(self.nuts_kwargs)
-
-            
             if self.mode:
-                map_estimate = mc.find_MAP(model=model, method=self.MAP_method)
+                map_estimate = mc.find_MAP(model=model, method=self.MAP_method,
+                                           options={'disp':self.verbose})
                 print (map_estimate)
                 self.MAP = map_estimate
                 self.trace = []
@@ -169,6 +168,7 @@ class PyFBU(object):
 
             trace = mc.sample(self.nMCMC,tune=self.nTune,cores=self.nCores,
                               chains=self.nChains, nuts_kwargs=self.nuts_kwargs,
+                              init=self.init_method, n_init=200000,
                               discard_tuned_samples=self.discard_tuned_samples,
                               progressbar=self.sampling_progressbar)
             finish_time = time.time()
@@ -178,7 +178,8 @@ class PyFBU(object):
             ))
 
             self.trace = [trace['truth%d'%bin][:] for bin in range(truthdim)]
-            #self.trace = [copy.deepcopy(trace['truth%d'%bin][:]) for bin in range(truthdim)]
+            self.__trace__ = trace # for full access
+            self.trace_summary = mc.summary(trace)
             self.nuisancestrace = {}
             if nbckg>0:
                 for name,err in zip(backgroundkeys,backgroundnormsysts):
