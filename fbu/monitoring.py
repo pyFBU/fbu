@@ -1,14 +1,15 @@
 import matplotlib.mlab as mlab
 import matplotlib.pyplot as plt
 from numpy import mean,std,arange,array
+from scipy.stats import norm
 
 def plothistandtrace(name,xx,lower,upper):
     ax = plt.subplot(211)
     mu = mean(xx) if 'truth' in name else 0.
     sigma = std(xx) if 'truth' in name else 1.
-    n, bins, patches = plt.hist(xx, bins=50, normed=1, facecolor='green', 
+    n, bins, patches = plt.hist(xx, bins=50, normed=1, facecolor='green',
                                 alpha=0.5, histtype='stepfilled')
-    yy = mlab.normpdf(bins,mu,sigma)
+    yy = norm.pdf(bins,mu,sigma)
     plt.plot(bins,yy,'r-')
     plt.ylabel('Probability')
     plt.xlabel('Bin content')
@@ -43,12 +44,12 @@ def plot(dirname,data,bkgd,resmat,trace,nuisancetrace,lower=[],upper=[]):
     plt.close()
 
     for name,nuisance in nuisancetrace.items():
-        plothistandtrace(dirname+name,nuisance,-5.,5.)        
+        plothistandtrace(dirname+name,nuisance,-5.,5.)
 
     nbins = len(trace)
-    for bin in range(nbins): 
+    for bin in range(nbins):
         plothistandtrace(dirname+'bin%d'%bin,trace[bin],lower[bin],upper[bin])
-        
+
         for name,nuisance in nuisancetrace.items():
             plt.plot(trace[bin],nuisance,',')
             plt.savefig(dirname+'%s_bin%d.png'%(name,bin))
